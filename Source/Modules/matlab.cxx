@@ -2029,14 +2029,12 @@ int MATLAB::classHandler(Node *n) {
       SwigType_remember_clientdata(smart, quoted_class_name);
       Delete(spt);
       Delete(smart);
+    } else {
+      SwigType *t = Copy(Getattr(n, "name"));
+      SwigType_add_pointer(t);
+      SwigType_remember_clientdata(t, quoted_class_name);
+      Delete(t);
     }
-    else
-      {
-	SwigType *t = Copy(Getattr(n, "name"));
-	SwigType_add_pointer(t);
-	SwigType_remember_clientdata(t, quoted_class_name);
-	Delete(t);
-      }
     Delete(quoted_class_name);
     Delete(smartptr);
   }
@@ -2222,8 +2220,8 @@ int MATLAB::memberfunctionHandler(Node *n) {
 }
 
 void MATLAB::initGateway() {
-  if (CPlusPlus) Printf(f_gateway,"extern \"C\"\n");
-  Printf(f_gateway,"void mexFunction(int resc, mxArray *resv[], int argc, const mxArray *argv[]) {\n");
+  if (CPlusPlus) Printf(f_gateway,"extern \"C\"\n");  
+  Printf(f_gateway,"DLL_EXPORT_SYM void mexFunction(int resc, mxArray *resv[], int argc, const mxArray *argv[]) {\n");
   
   // Load module if first call
   Printf(f_gateway,"  /* Initialize module if first call */\n");

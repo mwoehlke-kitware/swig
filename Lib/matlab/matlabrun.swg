@@ -181,39 +181,32 @@ SWIGRUNTIME mxArray* SWIG_Matlab_NewPointerObj(void *ptr, swig_type_info *type, 
   /* Ownership? */
   int own = (flags & SWIG_POINTER_OWN) ? SWIG_POINTER_OWN : 0;
 
+  /* Create a proxy class of the desired type */
+  mxArray* pm;
+  if (type->clientdata) {
+    const char* matlab_classname = (const char *)type->clientdata;
+    if (SWIG_Matlab_CallInterp(1, &pm, 0, 0, matlab_classname)) {
+      mexWarnMsgIdAndTxt("SWIG:NewPointerObj",
+                        "NewPointerObj problem. creating SwigRef as opposed to %s", matlab_classname);
+      if (SWIG_Matlab_CallInterp(1, &pm, 0, 0, "SwigRef")) {
+        mexErrMsgIdAndTxt("SWIG:NewPointerObj", "Cannot create SwigRef instance");
+      }
+    }
+  }
+
   /* Allocate a pointer object */
   SwigPtr* swig_ptr;
   if (SWIG_Matlab_NewPointer(&swig_ptr, ptr, type, own)) {
     mexErrMsgIdAndTxt("SWIG:NewPointerObj","Cannot allocate pointer");
   }
 
-  /* Create a SwigRef instance */
-  mxArray* pm = 0;
-  int ex = SWIG_Matlab_CallInterp(1, &pm, 0, 0, "SwigRef");
-  if (ex) mexErrMsgIdAndTxt("SWIG:NewPointerObj", "Cannot create SwigRef instance");
-
-  /* Set pointer property */
+  /* Convert to 64-bit unsigned int and pass pass to object */
   mxArray *pm_ptr = mxCreateNumericMatrix(1, 1, mxUINT64_CLASS, mxREAL);
   *(uint64_T *)mxGetData(pm_ptr) = (uint64_T)swig_ptr;
   if(!pm_ptr) mexErrMsgIdAndTxt("SWIG:NewPointerObj", "mxCreateNumericMatrix failed");
-
   mxArray *rhs[2] = {pm, pm_ptr};
   mexCallMATLAB(0, 0, 2, rhs, "SwigSet");
   mxDestroyArray(pm_ptr);
-
-  /* Create a proxy class of the desired type */
-  if (type->clientdata) {
-    const char* matlab_classname = (const char *)type->clientdata;
-    mxArray* pm_test = 0;
-    ex = SWIG_Matlab_CallInterp(1, &pm_test, 1, &pm, matlab_classname);
-    if (ex) {
-      mexWarnMsgIdAndTxt("SWIG:NewPointerObj",
-                         "NewPointerObj problem. creating SwigRef as opposed to %s", matlab_classname);
-    } else {
-      mxDestroyArray(pm);
-      pm = pm_test;
-    }
-  }
 
   return pm;
 }
@@ -242,9 +235,9 @@ SWIGRUNTIME int SWIG_Matlab_isOwned(mxArray* pm) {
 }
 
 SWIGRUNTIME SwigPtr* SWIG_Matlab_getSwigPtr(mxArray* pm) {
-/* Get index, represented as a uint64_T scalar */
+  /* Get index, represented as a uint64_T scalar */
   mxArray *pm_ptr;
-  mexCallMATLAB(1, &pm_ptr, 1, &pm, "SwigGet");
+  if (SWIG_Matlab_CallInterp(1, &pm_ptr, 1, &pm, "SwigGet")) return 0;
   if(!pm_ptr || mxGetNumberOfElements(pm_ptr) != 1 ||
      mxGetClassID(pm_ptr) != mxUINT64_CLASS || mxIsComplex(pm_ptr)) {
     if(pm_ptr) mxDestroyArray(pm_ptr);

@@ -72,7 +72,6 @@ protected:
   File *f_runtime_h;
   String* class_name;
   String* mex_name;
-  String* base_init;
   String* get_field;
   String* set_field;
   String* static_methods;
@@ -153,7 +152,6 @@ MATLAB::MATLAB() :
   f_directors_h(0),
   class_name(0),
   mex_name(0),
-  base_init(0),
   get_field(0),
   set_field(0),
   static_methods(0),
@@ -1914,7 +1912,6 @@ int MATLAB::classDirectorMethod(Node *n, Node *parent, String *super) {
     }
     Printf(w->code, "if (error != 0) {\n", Swig_cresult_name());
     Printf(w->code, "mexCallMATLAB(0, (mxArray **)NULL,1, &error, \"throw\");");
-
     if ((tm) && Len(tm) && (Strcmp(tm, "1") != 0)) {
       Replaceall(tm, "$error", "error");
       Printv(w->code, Str(tm), "\n", NIL);
@@ -2142,9 +2139,6 @@ int MATLAB::classHandler(Node *n) {
   // Declare MATLAB class
   Printf(f_wrap_m,"classdef %s < ", Getattr(n,"sym:name"));
 
-  // Initialization of base classes
-  base_init=NewString("");
-
   // Declare base classes, if any
   List *baselist = Getattr(n, "bases");
   int base_count = 0;
@@ -2174,9 +2168,6 @@ int MATLAB::classHandler(Node *n) {
 
       // Add to list of bases
       Printf(f_wrap_m,"%s.%s",bpkg,bname);
-
-      // Add to initialization
-      Printf(base_init,"      self@%s.%s(SwigRef.Null);\n",bpkg,bname);
     }
   }
 
@@ -2230,8 +2221,6 @@ int MATLAB::classHandler(Node *n) {
   Printf(f_wrap_m,"end\n");
 
   // Tidy up
-  Delete(base_init);
-  base_init=0;
   Delete(f_wrap_m);
   f_wrap_m = 0;
   //note: don't Delete class_name as it's not a new object
@@ -2462,55 +2451,57 @@ int MATLAB::membervariableHandler(Node *n) {
 }
 
 void MATLAB::wrapConstructor(int gw_ind, String *symname, String *fullname, Node *n) {
+    // Constructor (except default constructor)
     Printf(f_wrap_m,"    function self = %s(varargin)\n",symname);
-    Printf(f_wrap_m,"%s",base_init);
-    Printf(f_wrap_m,"      if nargin==1 && strcmp(class(varargin{1}),'SwigRef')\n");
-    Printf(f_wrap_m,"        if ~isnull(varargin{1})\n");
-    Printf(f_wrap_m,"          self.swigPtr = varargin{1}.swigPtr;\n");
-    Printf(f_wrap_m,"        end\n");
-    Printf(f_wrap_m,"      else\n");
+    Printf(f_wrap_m,"      if nargin>0\n");
     if (fullname==0) {
       Printf(f_wrap_m,"        error('No matching constructor');\n");
     } else {
-      // How to get working on C side? Commented out, replaced by hack below
-      // Printf(f_wrap_m,"        self.swigPtr = %s(%d, varargin{:});\n", mex_name, gw_ind);
-      if (have_matlabprepend(n))
-        Printf(f_wrap_m, "%s\n",matlabprepend(n));
-      Printf(f_wrap_m,"        tmp = %s(%d, varargin{:});\n", mex_name, gw_ind);
-      Printf(f_wrap_m,"        self.swigPtr = tmp.swigPtr;\n");
-      Printf(f_wrap_m,"        tmp.swigPtr = [];\n");
-      if (have_matlabappend(n))
-        Printf(f_wrap_m, "%s\n",matlabappend(n));
-    }
-    Printf(f_wrap_m,"      end\n");
-    Printf(f_wrap_m,"    end\n");
-}
-
-void MATLAB::wrapConstructorDirector(int gw_ind, String *symname, String *fullname, Node *n) {
-    Printf(f_wrap_m,"    function self = %s(varargin)\n",symname);
-    Printf(f_wrap_m,"%s",base_init);
-    Printf(f_wrap_m,"      if nargin==1 && strcmp(class(varargin{1}),'SwigRef')\n");
-    Printf(f_wrap_m,"        if ~isnull(varargin{1})\n");
-    Printf(f_wrap_m,"          self.swigPtr = varargin{1}.swigPtr;\n");
-    Printf(f_wrap_m,"        end\n");
-    Printf(f_wrap_m,"      else\n");
-    if (fullname==0) {
-      Printf(f_wrap_m,"        error('No matching constructor');\n");
-    } else {
-      // How to get working on C side? Commented out, replaed by hack below
-      // Printf(f_wrap_m,"        self.swigPtr = %s(%d, varargin{:});\n", mex_name, gw_ind);
-      if (have_matlabprepend(n)) Printf(f_wrap_m, "%s\n", matlabprepend(n));
-      Printf(f_wrap_m,"        if strcmp(class(self),'director_basic.%s')\n", symname);
-      Printf(f_wrap_m,"          tmp = %s(%d, 0, varargin{:});\n", mex_name, gw_ind);
-      Printf(f_wrap_m,"        else\n");
-      Printf(f_wrap_m,"          tmp = %s(%d, self, varargin{:});\n", mex_name, gw_ind);
-      Printf(f_wrap_m,"        end\n");
-      Printf(f_wrap_m,"        self.swigPtr = tmp.swigPtr;\n");
-      Printf(f_wrap_m,"        tmp.swigPtr = [];\n");
+      if (have_matlabprepend(n)) Printf(f_wrap_m, "%s\n",matlabprepend(n));
+      Printf(f_wrap_m,"        self = %s(%d, varargin{:});\n", mex_name, gw_ind);
       if (have_matlabappend(n)) Printf(f_wrap_m, "%s\n",matlabappend(n));
     }
     Printf(f_wrap_m,"      end\n");
     Printf(f_wrap_m,"    end\n");
+    // Default constructor
+    if (fullname!=0) {
+      Printf(static_methods,"    function self = default()\n");
+      if (have_matlabprepend(n)) Printf(static_methods, "%s\n",matlabprepend(n));
+      Printf(static_methods,"      self = %s(%d);\n", mex_name, gw_ind);
+      if (have_matlabappend(n)) Printf(static_methods, "%s\n",matlabappend(n));
+      Printf(static_methods,"    end\n");
+    }
+}
+
+void MATLAB::wrapConstructorDirector(int gw_ind, String *symname, String *fullname, Node *n) {
+    // Constructor (except default constructor)
+    Printf(f_wrap_m,"    function self = %s(varargin)\n",symname);
+    Printf(f_wrap_m,"      if nargin>0\n");
+    if (fullname==0) {
+      Printf(f_wrap_m,"        error('No matching constructor');\n");
+    } else {
+      if (have_matlabprepend(n)) Printf(f_wrap_m, "%s\n", matlabprepend(n));
+      Printf(f_wrap_m,"        if strcmp(class(self),'director_basic.%s')\n", symname);
+      Printf(f_wrap_m,"          self = %s(%d, 0, varargin{:});\n", mex_name, gw_ind);
+      Printf(f_wrap_m,"        else\n");
+      Printf(f_wrap_m,"          self = %s(%d, self, varargin{:});\n", mex_name, gw_ind);
+      Printf(f_wrap_m,"        end\n");
+      if (have_matlabappend(n)) Printf(f_wrap_m, "%s\n",matlabappend(n));
+    }
+    Printf(f_wrap_m,"      end\n");
+    Printf(f_wrap_m,"    end\n");
+    // Default constructor
+    if (fullname!=0) {
+      Printf(static_methods,"    function self = default()\n");
+      if (have_matlabprepend(n)) Printf(static_methods, "%s\n", matlabprepend(n));
+      Printf(static_methods,"      if strcmp(class(self),'director_basic.%s')\n", symname);
+      Printf(static_methods,"        self = %s(%d, 0);\n", mex_name, gw_ind);
+      Printf(static_methods,"      else\n");
+      Printf(static_methods,"        self = %s(%d, self);\n", mex_name, gw_ind);
+      Printf(static_methods,"      end\n");
+      if (have_matlabappend(n)) Printf(static_methods, "%s\n",matlabappend(n));
+      Printf(static_methods,"    end\n");
+    }
 }
 
 int MATLAB::constructorHandler(Node *n) {
@@ -2577,12 +2568,12 @@ int MATLAB::destructorHandler(Node *n) {
   // Add to function switch
   String *wname = Swig_name_wrapper(fullname);
   int gw_ind = toGateway(fullname,wname);
-  Printf(f_wrap_m,"      if self.swigPtr\n");
-  Printf(f_wrap_m,"        %s(%d, self);\n", mex_name, gw_ind);
   // Prevent that the object gets deleted another time.
   // This is important for MATLAB as for class hierarchies, it calls delete for
   // each class in the hierarchy. This isn't the case for C++ which only calls the
   // destructor of the "leaf-class", which should take care of deleting everything.
+  Printf(f_wrap_m,"      if self.swigPtr\n");
+  Printf(f_wrap_m,"        %s(%d, self);\n", mex_name, gw_ind);
   Printf(f_wrap_m,"        self.swigPtr=[];\n");
   Printf(f_wrap_m,"      end\n");
   Printf(f_wrap_m,"    end\n");
@@ -2797,19 +2788,7 @@ void MATLAB::createSwigRef() {
   Printf(f_wrap_m,"  properties(Hidden = true, Access = public) \n");
   Printf(f_wrap_m,"    swigPtr\n");
   Printf(f_wrap_m,"  end\n");
-  Printf(f_wrap_m,"  methods(Static = true, Access = protected)\n");
-  Printf(f_wrap_m,"    function obj = Null()\n");
-  Printf(f_wrap_m,"      persistent obj_null\n");
-  Printf(f_wrap_m,"      if isempty(obj_null)\n");
-  Printf(f_wrap_m,"        obj_null = SwigRef();\n");
-  Printf(f_wrap_m,"      end\n");
-  Printf(f_wrap_m,"      obj = obj_null;\n");
-  Printf(f_wrap_m,"    end\n");
-  Printf(f_wrap_m,"  end\n");
   Printf(f_wrap_m,"  methods\n");
-  Printf(f_wrap_m,"    function b = isnull(self)\n");
-  Printf(f_wrap_m,"      b = isempty(self.swigPtr);\n");
-  Printf(f_wrap_m,"    end\n");
   Printf(f_wrap_m,"    function disp(self)\n");
   Printf(f_wrap_m,"      disp(sprintf('<Swig object, ptr=%%d>',self.swigPtr))\n");
   Printf(f_wrap_m,"    end\n");

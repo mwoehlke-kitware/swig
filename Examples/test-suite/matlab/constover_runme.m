@@ -8,7 +8,7 @@ if (~strcmp(p,'test_pconst'))
     error('test_pconst failed~')
 end
 
-f = constover.Foo();
+f = constover.Foo.default;
 p = f.test('test');
 if (~strcmp(p,'test'))
     error('member-test failed~')

@@ -21,15 +21,15 @@ end
 if (~strcmp(cpp_namespace.do_method2(t),'Test::method'))
     error('Bad return value!')
 end
-    
+
 cpp_namespace.weird('hello', 4);
 
 clear t;
 
-t2 = cpp_namespace.Test2();
-t3 = cpp_namespace.Test3();
-t4 = cpp_namespace.Test4();
-t5 = cpp_namespace.Test5();
+t2 = cpp_namespace.Test2.default;
+t3 = cpp_namespace.Test3.default;
+t4 = cpp_namespace.Test4.default;
+t5 = cpp_namespace.Test5.default;
 
 if (cpp_namespace.foo3(42) ~= 42)
     error('Bad return value!')
@@ -50,5 +50,3 @@ end
 if (~strcmp(cpp_namespace.do_method3(t5,40),'Test5::method'))
     error('Bad return value!')
 end
-
-    

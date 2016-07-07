@@ -1,6 +1,6 @@
-e = abstract_typedef.Engine();
+e = abstract_typedef.Engine.default;
 
-a = abstract_typedef.A();
+a = abstract_typedef.A.default;
 
 
 if (a.write(e) ~= 1)

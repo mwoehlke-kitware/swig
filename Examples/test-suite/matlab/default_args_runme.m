@@ -15,7 +15,7 @@ if (default_args.cfunc3(1) ~= 4)
 end
 
 
-f = default_args.Foo();
+f = default_args.Foo.default;
 
 f.newname();
 f.newname(1);

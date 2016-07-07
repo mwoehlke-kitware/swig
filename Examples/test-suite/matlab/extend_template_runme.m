@@ -1,4 +1,4 @@
-f = extend_template.Foo_0();
+f = extend_template.Foo_0.default;
 if (f.test1(37) ~= 37)
     error
 end

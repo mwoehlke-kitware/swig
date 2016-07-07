@@ -27,7 +27,7 @@ try
 catch
 end
 
-f = contract.Foo();
+f = contract.Foo.default;
 f.test_preassert(4,5);
 try
 	f.test_preassert(-2,3);
@@ -69,7 +69,7 @@ try
 catch
 end
 
-b = contract.Bar();
+b = contract.Bar.default;
 try
 	b.test_prepost(2,-4);
 	error('Failed~ Inherited preassertion.')
@@ -77,7 +77,7 @@ catch
 end
 
 
-d = contract.D();
+d = contract.D.default;
 try
 	d.foo(-1,1,1,1,1);
 	error('Failed~ Inherited preassertion (D).')

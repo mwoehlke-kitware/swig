@@ -664,7 +664,7 @@ public:
       if (isConstant || isEnum) {
 	if (isEnum) {
 	  Setattr(node, "type", "double");
-	  constantValue = Getattr(node, "enumvalue");
+	  constantValue = Getattr(node, "value");
 	}
 
 	constantTypemap = Swig_typemap_lookup("scilabconstcode", node, nodeName, 0);
@@ -1030,7 +1030,7 @@ public:
       Printf(gatewayHeaderV5, ",\n");
     Printf(gatewayHeaderV5, " {(Myinterfun)sci_gateway, (GT)%s, (char *)\"%s\"}", wrapperFunctionName, scilabFunctionName);
 
-    Printf(gatewayHeaderV6, "if (wcscmp(pwstFuncName, L\"%s\") == 0) { addCFunction((wchar_t *)L\"%s\", &%s, (wchar_t *)MODULE_NAME); }\n", scilabFunctionName, scilabFunctionName, wrapperFunctionName);
+    Printf(gatewayHeaderV6, "if (wcscmp(pwstFuncName, L\"%s\") == 0) { addCStackFunction((wchar_t *)L\"%s\", &%s, (wchar_t *)MODULE_NAME); }\n", scilabFunctionName, scilabFunctionName, wrapperFunctionName);
   }
 
   /* -----------------------------------------------------------------------
